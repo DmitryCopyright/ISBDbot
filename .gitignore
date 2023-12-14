@@ -1,0 +1,41 @@
+# IntelliJ IDEA
+.idea/
+
+# Compiled bytecode
+*.class
+
+# Log files
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Directories for the bytecode cache
+out/
+
+# Project files
+*.iml
+*.ipr
+*.iws
+
+# User-specific files
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+
+# Sensitive or private files
+.idea/dataSources.local.xml
+.idea/dataSources/
+
+# Gradle
+.gradle/
+build/
+
+# Kotlin
+*.kotlin_module
+
+# CMake
+cmake-build-debug/
+cmake-build-release/
+
+node_modules
