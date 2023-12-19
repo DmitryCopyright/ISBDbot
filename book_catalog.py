@@ -26,13 +26,18 @@ def get_book_details(book_id):
     conn = create_connection()
     with conn:
         cursor = conn.cursor()
-        # Использование %s вместо ?
-        cursor.execute("SELECT name, ISBN, author_id, copies FROM Books WHERE book_id = %s", (book_id,))
+        cursor.execute("SELECT name, ISBN, author_id, genre_id, copies FROM Books WHERE book_id = %s", (book_id,))
         row = cursor.fetchone()
         if row:
+            # Fetch author name
             cursor.execute("SELECT name FROM Authors WHERE author_id = %s", (row[2],))
             author = cursor.fetchone()[0]
-            return {'name': row[0], 'ISBN': row[1], 'author': author, 'copies': row[3]}
+
+            # Fetch genre name
+            cursor.execute("SELECT name FROM Genres WHERE genre_id = %s", (row[3],))
+            genre = cursor.fetchone()[0]
+
+            return {'name': row[0], 'ISBN': row[1], 'author': author, 'genre': genre, 'copies': row[4]}
         else:
             return None
 

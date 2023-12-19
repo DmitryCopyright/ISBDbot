@@ -148,7 +148,7 @@ async def book_id_entered(message: types.Message, state: FSMContext):
     details = get_book_details(book_id)
     if details:
         # Формирование ответа с деталями книги
-        response = f"Название: {details['name']}\nАвтор: {details['author']}\nISBN: {details['ISBN']}\nКоличество: {details['copies']}"
+        response = f"Название: {details['name']}\nАвтор: {details['author']}\nISBN: {details['ISBN']}\nЖанр: {details['genre']}\nКоличество: {details['copies']}"
     else:
         response = "Книга с таким ID не найдена."
     await message.answer(response)
