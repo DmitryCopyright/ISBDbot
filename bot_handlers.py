@@ -32,7 +32,6 @@ class ReserveBook(StatesGroup):
 
 router = Router()
 
-
 @router.message(Command(commands=["start"]))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
@@ -215,6 +214,11 @@ async def cmd_my_reservations(message: types.Message, state: FSMContext):
     else:
         await message.answer("Пожалуйста, войдите в систему для использования этой команды.")
 
+async def ask_question(message: types.Message, state: FSMContext, question: str, state_name: State):
+    await message.answer(question)
+    await state.set_state(state_name)
+
+import admin_handlers
 
 # Функция для регистрации всех обработчиков
 def register_handlers(dp: Dispatcher):
