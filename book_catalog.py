@@ -52,37 +52,32 @@ def get_available_books():
             available_books.append({'book_id': row[0], 'name': row[1], 'author': row[2]})
     return available_books
 
-def reserve_book(book_id, user_number):
-    if not book_available(book_id):
-        return None  # Книга не доступна для бронирования
-
+def reserve_book(book_id, reader_id):
     conn = create_connection()
     with conn:
         cursor = conn.cursor()
 
-
-        # Получаем reader_id и название книги
+        # Проверяем наличие книги и пользователя, а также предыдущие бронирования
         cursor.execute("""
-            SELECT r.reader_id, b.name 
-            FROM Readers r 
-            JOIN Books b ON b.book_id = %s 
-            WHERE r.reader_number = %s
-        """, (book_id, user_number))
+            SELECT b.name, COUNT(br.book_id)
+            FROM Books b 
+            LEFT JOIN BookReservations br ON br.book_id = b.book_id AND br.reader_id = %s AND br.reservation_date IS NOT NULL
+            WHERE b.book_id = %s
+            GROUP BY b.name
+        """, (reader_id, book_id))
         result = cursor.fetchone()
-        if cursor.rowcount == 0:
-            return None  # Читатель или книга не найдены
 
-        reader_id, book_title = result
+        if cursor.rowcount == 0 or result[1] > 0:
+            return None  # Книга не найдена или уже забронирована пользователем
 
-        cursor.execute("SELECT COUNT(*) FROM BookReservations WHERE book_id = %s AND reader_id = %s AND reservation_date IS NOT NULL", (book_id, reader_id))
-        if cursor.fetchone()[0] > 0:
-            return "Вы уже забронировали эту книгу."  # Пользователь уже арендовал эту книгу
+        book_title = result[0]
+
 
         # Создаем бронь в BookReservations
         cursor.execute("""
             INSERT INTO BookReservations (name, book_id, reader_id, staff_id, reservation_date) 
             VALUES (%s, %s, %s, %s, CURRENT_DATE)
-        """, (book_title, book_id, reader_id, 1))  # предполагая, что staff_id = 0
+        """, (book_title, book_id, reader_id, 1))  # Используйте фактический staff_id
         reservation_id = cursor.lastrowid
 
         # Создаем запись в BookLoans
@@ -90,7 +85,7 @@ def reserve_book(book_id, user_number):
         cursor.execute("""
             INSERT INTO BookLoans (book_id, reader_id, staff_id, issue_date, return_period) 
             VALUES (%s, %s, %s, CURRENT_DATE, %s)
-        """, (book_id, reader_id, 1, return_date))  # предполагая, что staff_id = 0
+        """, (book_id, reader_id, 1, return_date))  # Используйте фактический staff_id
         loan_id = cursor.lastrowid
 
         # Уменьшаем количество доступных копий
@@ -99,18 +94,11 @@ def reserve_book(book_id, user_number):
 
         return reservation_id, loan_id, return_date
 
-def get_user_reservations(reader_number):
+def get_user_reservations(reader_id):
     conn = create_connection()
     reservations = []
     with conn:
         cursor = conn.cursor()
-
-        # Получение reader_id по reader_number
-        cursor.execute("SELECT reader_id FROM Readers WHERE reader_number = %s", (reader_number,))
-        result = cursor.fetchone()
-        if not result:
-            return []  # Читатель с таким номером не найден
-        reader_id = result[0]
 
         # Получение резерваций по reader_id
         cursor.execute("""

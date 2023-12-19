@@ -44,13 +44,13 @@ async def cmd_register(message: types.Message, state: FSMContext):
     if user_data.get("logged_in"):
         await message.answer("Вы уже зарегистрированы и вошли в систему.")
     else:
-        await message.answer("Введите ваше имя:")
+        await message.answer("Придумайте имя пользователя:")
         await state.set_state(Registration.waiting_for_name)
 
 @router.message(Registration.waiting_for_name)
 async def name_entered(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await message.answer("Введите ваш номер/почту:")
+    await message.answer("Введите ваш номер:")
     await state.set_state(Registration.waiting_for_contact_data)
 
 
@@ -65,9 +65,16 @@ async def contact_data_entered(message: types.Message, state: FSMContext):
 async def reader_number_entered(message: types.Message, state: FSMContext):
     await state.update_data(reader_number=message.text)
     data = await state.get_data()
-    register_user(data['name'], data['contact_data'], data['reader_number'])
-    await message.answer("Вы успешно зарегистрированы!")
-    await state.clear()
+    registration_result = register_user(data['name'], data['contact_data'], data['reader_number'])
+
+    if registration_result == "Такое имя пользователя уже зарегистрировано!":
+        await message.answer(registration_result)
+        await message.answer("Попробуйте зарегистрироваться снова.")
+        await state.set_state(None)  # Очищаем состояние для новой попытки регистрации
+    else:
+        await message.answer("Вы успешно зарегистрированы!")
+        await state.set_state(None)  # Очищаем состояние после успешной регистрации
+
 
 
 # Вход пользователя
@@ -77,7 +84,7 @@ async def cmd_login(message: types.Message, state: FSMContext):
     if user_data.get("logged_in"):
         await message.answer("Вы уже вошли в систему.")
     else:
-        await message.answer("Введите ваше имя:")
+        await message.answer("Введите имя пользователя:")
         await state.set_state(Login.waiting_for_name)
 
 
@@ -92,15 +99,15 @@ async def login_name_entered(message: types.Message, state: FSMContext):
 async def login_reader_number_entered(message: types.Message, state: FSMContext):
     await state.update_data(reader_number=message.text)
     data = await state.get_data()
-    user_exists = log_in_user(data['name'], data['reader_number'])
+    reader_id = log_in_user(data['name'], data['reader_number'])
 
-    if user_exists:
-        await state.update_data(logged_in=True, user_id=data['reader_number'])
-        await state.set_state(UserLoggedIn.active)  # Переводим пользователя в состояние входа
+    if reader_id:
+        await state.update_data(logged_in=True, reader_id=reader_id)
+        await state.set_state(UserLoggedIn.active)
         await message.answer("Вход выполнен. Добро пожаловать, " + data['name'] + "!")
     else:
-        await message.answer("Пользователь с такими данными не найден.")
-        await state.clear()
+        await message.answer("Неправильное имя пользователя или пароль")
+        await state.set_state(None)
 
 
 @router.message(Command(commands=["search"]))
@@ -123,7 +130,7 @@ async def search_query_entered(message: types.Message, state: FSMContext):
     else:
         response = "По вашему запросу книги не найдены."
     await message.answer(response)
-    await state.clear()
+    await state.set_state(None)
 
 
 
@@ -134,7 +141,11 @@ async def cmd_book_details(message: types.Message, state: FSMContext):
 
 @router.message(BookDetails.waiting_for_book_id)
 async def book_id_entered(message: types.Message, state: FSMContext):
-    book_id = message.text
+    try:
+        book_id = int(message.text)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректный ID книги (число).")
+        return
     details = get_book_details(book_id)
     if details:
         # Формирование ответа с деталями книги
@@ -142,7 +153,7 @@ async def book_id_entered(message: types.Message, state: FSMContext):
     else:
         response = "Книга с таким ID не найдена."
     await message.answer(response)
-    await state.clear()
+    await state.set_state(None)
 
 @router.message(Command(commands=["exit"]))
 async def cmd_exit(message: types.Message, state: FSMContext):
@@ -174,24 +185,28 @@ async def cmd_reserve_book(message: types.Message, state: FSMContext):
 @router.message(ReserveBook.waiting_for_book_id)
 async def book_id_to_reserve_entered(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
-    user_id = user_data.get("user_id")
-    book_id = message.text
-    result = reserve_book(book_id, user_id)
+    reader_id = user_data.get("reader_id")  # Используйте reader_id вместо user_id
+    try:
+        book_id = int(message.text)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректный ID книги (число).")
+        return
+    result = reserve_book(book_id, reader_id)
     if result == "Вы уже забронировали эту книгу.":
         await message.answer(result)
     elif result:
         reservation_id, loan_id, return_date = result
         await message.answer(f"Книга успешно забронирована. Вам необходимо вернуть книгу до {return_date}.")
     else:
-        await message.answer("Не удалось забронировать книгу.")
+        await message.answer("Не удалось забронировать книгу/Книга уже была забронирована ранее")
     await state.set_state(None)
 
 @router.message(Command(commands=["myreservations"]))
 async def cmd_my_reservations(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in"):
-        user_id = user_data.get("user_id")
-        reservations = get_user_reservations(user_id)
+        reader_id = user_data.get("reader_id")
+        reservations = get_user_reservations(reader_id)
         if reservations:
             response = "\n".join([f"Бронирование ID: {res['reservation_id']} Книга: {res['book_name']} Дата: {res['reservation_date']}" for res in reservations])
         else:
@@ -199,7 +214,6 @@ async def cmd_my_reservations(message: types.Message, state: FSMContext):
         await message.answer(response)
     else:
         await message.answer("Пожалуйста, войдите в систему для использования этой команды.")
-
 
 
 # Функция для регистрации всех обработчиков
