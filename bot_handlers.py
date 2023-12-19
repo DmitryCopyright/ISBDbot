@@ -218,6 +218,8 @@ async def ask_question(message: types.Message, state: FSMContext, question: str,
     await message.answer(question)
     await state.set_state(state_name)
 
+# Do not delete, here we connect methods to the rout.
+# We cannot do that earlier because smth was not completed yet
 import admin_handlers
 
 # Функция для регистрации всех обработчиков

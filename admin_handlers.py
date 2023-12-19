@@ -4,11 +4,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
 from admin_database_updates import delete_book, change_copies, add_book, delete_genre, add_genre, add_department, \
-    add_publisher, add_author, delete_author
+    add_publisher, add_author, delete_author, delete_department, delete_publisher
 from bot_handlers import router, ask_question
 
 
-#region admin tools
+# region admin tools
 class AddBook(StatesGroup):
     waiting_for_name = State()
     waiting_for_ISBN = State()
@@ -17,6 +17,7 @@ class AddBook(StatesGroup):
     waiting_for_genre_id = State()
     waiting_for_department_id = State()
     waiting_for_copies = State()
+
 
 class AmountUpdate(StatesGroup):
     waiting_for_book_id = State()
@@ -38,14 +39,25 @@ class DeleteGenre(StatesGroup):
 class AddAuthor(StatesGroup):
     waiting_for_author_id = State()
 
+
 class DeleteAuthor(StatesGroup):
     waiting_for_author_id = State()
+
 
 class AddPublisher(StatesGroup):
     waiting_for_publisher_name = State()
 
+
+class DeletePublishers(StatesGroup):
+    waiting_for_publisher_id = State()
+
+
 class AddDepartment(StatesGroup):
     waiting_for_department_name = State()
+
+
+class DeleteDepartments(StatesGroup):
+    waiting_for_department_id = State()
 
 
 # region Add Book
@@ -131,7 +143,7 @@ async def copies_entered(message: types.Message, state: FSMContext):
     else:
         await message.answer(result)
 
-    await state.finish()
+    await state.set_state(None)
 
 
 # endregion
@@ -177,7 +189,7 @@ async def change_copies_new_copies_entered(message: types.Message, state: FSMCon
     else:
         await message.answer(f"Не удалось изменить количество копий книги с ID {book_id}.")
 
-    await state.finish()
+    await state.set_state(None)
 
 
 # endregion
@@ -205,7 +217,7 @@ async def delete_book_id_entered(message: types.Message, state: FSMContext):
         await message.answer(f"Книга с ID {book_id} успешно удалена.")
     else:
         await message.answer(f"Не удалось удалить книгу с ID {book_id}.")
-    await state.finish()
+    await state.set_state(None)
 
 
 # endregion
@@ -228,7 +240,7 @@ async def add_genre_name_entered(message: types.Message, state: FSMContext):
     else:
         await message.answer(f"Не удалось добавить жанр '{genre_name}'.")
 
-    await state.finish()
+    await state.set_state(None)
 
 
 # Command for deleting a genre
@@ -253,7 +265,9 @@ async def delete_genre_id_entered(message: types.Message, state: FSMContext):
     else:
         await message.answer(f"Не удалось удалить жанр с ID {genre_id}.")
 
-    await state.finish()
+    await state.set_state(None)
+
+
 # endregion
 
 # region authors
@@ -272,7 +286,7 @@ async def add_author_name_entered(message: types.Message, state: FSMContext):
     else:
         await message.answer(result)
 
-    await state.finish()
+    await state.set_state(None)
 
 
 @router.message(Command(commands=["deleteauthor"]))
@@ -296,7 +310,7 @@ async def delete_author_id_entered(message: types.Message, state: FSMContext):
     else:
         await message.answer(f"Не удалось удалить автора с ID {author_id}.")
 
-    await state.finish()
+    await state.set_state(None)
 
 
 # endregion
@@ -318,7 +332,35 @@ async def add_publisher_name_entered(message: types.Message, state: FSMContext):
     else:
         await message.answer(result)
 
-    await state.finish()
+    await state.set_state(None)
+
+
+# Command for deleting a publisher
+@router.message(Command(commands=["deletepublisher"]))
+async def cmd_delete_publisher(message: types.Message, state: FSMContext):
+    await ask_question(message, state, "Введите ID издателя, который нужно удалить:",
+                       DeletePublishers.waiting_for_publisher_id)
+
+
+# Function to handle the entered publisher ID for deletion
+@router.message(DeletePublishers.waiting_for_publisher_id)
+async def delete_publisher_id_entered(message: types.Message, state: FSMContext):
+    try:
+        publisher_id = int(message.text)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректный ID издателя (число).")
+        return
+
+    result = delete_publisher(publisher_id)
+
+    if result:
+        await message.answer(f"Издатель с ID {publisher_id} успешно удален.")
+    else:
+        await message.answer(f"Не удалось удалить издателя с ID {publisher_id}.")
+
+    await state.set_state(None)
+
+
 # endregion
 
 # region departments
@@ -339,7 +381,33 @@ async def add_department_name_entered(message: types.Message, state: FSMContext)
     else:
         await message.answer(result)
 
-    await state.finish()
+    await state.set_state(None)
+
+
+# Command for deleting a department
+@router.message(Command(commands=["deletedepartment"]))
+async def cmd_delete_department(message: types.Message, state: FSMContext):
+    await ask_question(message, state, "Введите ID отдела, который нужно удалить:",
+                       DeleteDepartments.waiting_for_department_id)
+
+
+# Function to handle the entered department ID for deletion
+@router.message(DeleteDepartments.waiting_for_department_id)
+async def delete_department_id_entered(message: types.Message, state: FSMContext):
+    try:
+        department_id = int(message.text)
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректный ID отдела (число).")
+        return
+
+    result = delete_department(department_id)
+
+    if result:
+        await message.answer(f"Отдел с ID {department_id} успешно удален.")
+    else:
+        await message.answer(f"Не удалось удалить отдел с ID {department_id}.")
+
+    await state.set_state(None)
 # endregion
 
-#endregion
+# endregion
