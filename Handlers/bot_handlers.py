@@ -220,9 +220,9 @@ async def ask_question(message: types.Message, state: FSMContext, question: str,
 
 # Do not delete, here we connect methods to the rout.
 # We cannot do that earlier because smth was not completed yet
-import Handlers.admin_handlers
-import Handlers.admin_user_interaction
+import Handlers.library_handlers
 import Handlers.staff_handlers
+import Handlers.reservations_handlers
 
 # Функция для регистрации всех обработчиков
 def register_handlers(dp: Dispatcher):
