@@ -3,8 +3,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from book_catalog import search_books, get_book_details, get_available_books, reserve_book, get_user_reservations
-from user_management import register_user, log_in_user
+from DatabaseInteractions.book_catalog import search_books, get_book_details, get_available_books, reserve_book, get_user_reservations
+from DatabaseInteractions.user_management import register_user, log_in_user
 
 
 class Registration(StatesGroup):
@@ -80,7 +80,7 @@ async def reader_number_entered(message: types.Message, state: FSMContext):
 @router.message(Command(commands=["login"]))
 async def cmd_login(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
-    if user_data.get("logged_in"):
+    if user_data.get("logged_in") or user_data.get("staff_logged_in"):
         await message.answer("Вы уже вошли в систему.")
     else:
         await message.answer("Введите имя пользователя:")
@@ -220,7 +220,9 @@ async def ask_question(message: types.Message, state: FSMContext, question: str,
 
 # Do not delete, here we connect methods to the rout.
 # We cannot do that earlier because smth was not completed yet
-import admin_handlers
+import Handlers.admin_handlers
+import Handlers.admin_user_interaction
+import Handlers.staff_handlers
 
 # Функция для регистрации всех обработчиков
 def register_handlers(dp: Dispatcher):

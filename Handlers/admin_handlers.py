@@ -1,11 +1,11 @@
-from aiogram import types, Router, Dispatcher
+from aiogram import types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from admin_database_updates import delete_book, change_copies, add_book, delete_genre, add_genre, add_department, \
+from DatabaseInteractions.admin_database_updates import delete_book, change_copies, add_book, delete_genre, add_genre, add_department, \
     add_publisher, add_author, delete_author, delete_department, delete_publisher
-from bot_handlers import router, ask_question
+from Handlers.bot_handlers import router, ask_question
 
 
 # region admin tools
@@ -63,7 +63,12 @@ class DeleteDepartments(StatesGroup):
 # region Add Book
 @router.message(Command(commands=["addbook"]))
 async def cmd_add_book(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите название книги:", AddBook.waiting_for_name)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите название книги:", AddBook.waiting_for_name)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 @router.message(AddBook.waiting_for_name)
@@ -152,8 +157,15 @@ async def copies_entered(message: types.Message, state: FSMContext):
 # Command for changing the number of copies of a book
 @router.message(Command(commands=["changecopies"]))
 async def cmd_change_copies(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите ID книги, у которой нужно изменить количество копий:",
-                       AmountUpdate.waiting_for_book_id)
+    user_data = await state.get_data()
+
+    # Check if a staff member is logged in
+    if user_data.get("staff_logged_in"):
+        # Staff member is logged in, proceed with adding a book
+        await ask_question(message, state, "Введите ID книги, у которой нужно изменить количество копий:",
+                           AmountUpdate.waiting_for_book_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 # Function to handle the entered book ID for changing copies
@@ -198,7 +210,14 @@ async def change_copies_new_copies_entered(message: types.Message, state: FSMCon
 # Command for deleting a book
 @router.message(Command(commands=["deletebook"]))
 async def cmd_delete_book(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите ID книги, которую нужно удалить:", DeleteBook.waiting_for_book_id)
+    user_data = await state.get_data()
+
+    # Check if a staff member is logged in
+    if user_data.get("staff_logged_in"):
+        # Staff member is logged in, proceed with adding a book
+        await ask_question(message, state, "Введите ID книги, которую нужно удалить:", DeleteBook.waiting_for_book_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 # Function to handle the entered book ID for deletion
@@ -226,7 +245,12 @@ async def delete_book_id_entered(message: types.Message, state: FSMContext):
 # Command for adding a new genre
 @router.message(Command(commands=["addgenre"]))
 async def cmd_add_genre(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите название нового жанра:", AddGenre.waiting_for_genre_name)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите название нового жанра:", AddGenre.waiting_for_genre_name)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 # Function to handle the entered genre name
@@ -246,7 +270,13 @@ async def add_genre_name_entered(message: types.Message, state: FSMContext):
 # Command for deleting a genre
 @router.message(Command(commands=["deletegenre"]))
 async def cmd_delete_genre(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите ID жанра, который нужно удалить:", DeleteGenre.waiting_for_genre_id)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите ID жанра, который нужно удалить:", DeleteGenre.waiting_for_genre_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
+
 
 
 # Function to handle the entered genre ID for deletion
@@ -266,14 +296,17 @@ async def delete_genre_id_entered(message: types.Message, state: FSMContext):
         await message.answer(f"Не удалось удалить жанр с ID {genre_id}.")
 
     await state.set_state(None)
-
-
 # endregion
 
 # region authors
 @router.message(Command(commands=["addauthor"]))
 async def cmd_add_author(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите ФИО автора:", AddAuthor.waiting_for_author_id)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите ФИО автора:", AddAuthor.waiting_for_author_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 @router.message(AddAuthor.waiting_for_author_id)
@@ -291,8 +324,12 @@ async def add_author_name_entered(message: types.Message, state: FSMContext):
 
 @router.message(Command(commands=["deleteauthor"]))
 async def cmd_delete_author(message: types.Message, state: FSMContext):
-    await message.answer("Введите ID автора, которого нужно удалить:")
-    await ask_question(message, state, "Введите ID автора, которого нужно удалить:", DeleteAuthor.waiting_for_author_id)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите ID автора, которого нужно удалить:", DeleteAuthor.waiting_for_author_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 @router.message(DeleteAuthor.waiting_for_author_id)
@@ -318,7 +355,12 @@ async def delete_author_id_entered(message: types.Message, state: FSMContext):
 # region publishers
 @router.message(Command(commands=["addpublisher"]))
 async def cmd_add_publisher(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите название издателя:", AddPublisher.waiting_for_publisher_name)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите название издателя:", AddPublisher.waiting_for_publisher_name)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 # Function to handle the entered publisher name
@@ -338,8 +380,14 @@ async def add_publisher_name_entered(message: types.Message, state: FSMContext):
 # Command for deleting a publisher
 @router.message(Command(commands=["deletepublisher"]))
 async def cmd_delete_publisher(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите ID издателя, который нужно удалить:",
-                       DeletePublishers.waiting_for_publisher_id)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите ID издателя, который нужно удалить:",
+                           DeletePublishers.waiting_for_publisher_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
+
 
 
 # Function to handle the entered publisher ID for deletion
@@ -367,7 +415,12 @@ async def delete_publisher_id_entered(message: types.Message, state: FSMContext)
 # Function to initiate the process of adding a department
 @router.message(Command(commands=["adddepartment"]))
 async def cmd_add_department(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите название отдела:", AddPublisher.waiting_for_publisher_name)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите название отдела:", AddPublisher.waiting_for_publisher_name)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 # Function to handle the entered department name
@@ -387,8 +440,13 @@ async def add_department_name_entered(message: types.Message, state: FSMContext)
 # Command for deleting a department
 @router.message(Command(commands=["deletedepartment"]))
 async def cmd_delete_department(message: types.Message, state: FSMContext):
-    await ask_question(message, state, "Введите ID отдела, который нужно удалить:",
-                       DeleteDepartments.waiting_for_department_id)
+    user_data = await state.get_data()
+
+    if user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите ID отдела, который нужно удалить:",
+                           DeleteDepartments.waiting_for_department_id)
+    else:
+        await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
 # Function to handle the entered department ID for deletion

@@ -27,6 +27,15 @@ def log_in_user(name, reader_number):
             result = cursor.fetchone()
             return result[0] if result else None
 
+def log_in_staff(name):
+    conn = create_connection()
+    with conn:
+        with conn.cursor() as cursor:
+            query = '''SELECT staff_id FROM LibraryStaff WHERE name = %s'''
+            cursor.execute(query, (name,))
+            result = cursor.fetchone()
+            return result[0] if result else None
+
 def get_user_profile(user_id):
     conn = create_connection()
     with conn:

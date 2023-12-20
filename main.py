@@ -2,8 +2,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from bot_handlers import router
-
+from Handlers.bot_handlers import router
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
