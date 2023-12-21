@@ -181,13 +181,17 @@ async def book_id_to_reserve_entered(message: types.Message, state: FSMContext):
         await message.answer("Пожалуйста, введите корректный ID книги (число).")
         return
     result = reserve_book(book_id, reader_id)
-    if result == "Вы уже забронировали эту книгу.":
+
+    if isinstance(result, str):
+        # Если функция вернула строку, то это сообщение об ошибке
         await message.answer(result)
     elif result:
+        # Если функция вернула кортеж, то это успешное бронирование
         reservation_id, loan_id, return_date = result
         await message.answer(f"Книга успешно забронирована. Вам необходимо вернуть книгу до {return_date}.")
     else:
-        await message.answer("Не удалось забронировать книгу/Книга уже была забронирована ранее")
+        # В случае других ситуаций (например, книга не найдена)
+        await message.answer("Не удалось забронировать книгу.")
     await state.set_state(None)
 
 @router.message(Command(commands=["myreservations"]))

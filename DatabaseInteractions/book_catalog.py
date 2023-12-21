@@ -62,6 +62,14 @@ def reserve_book(book_id, reader_id):
     with conn:
         cursor = conn.cursor()
 
+        # Проверяем, есть ли у пользователя уже активные бронирования
+        cursor.execute("""
+            SELECT COUNT(*) FROM BookReservations
+            WHERE reader_id = %s AND reservation_date IS NOT NULL
+        """, (reader_id,))
+        if cursor.fetchone()[0] >= 1:
+            return "Одновременно допускается не больше одного бронирования!"
+
         # Проверяем наличие книги и пользователя, а также предыдущие бронирования
         cursor.execute("""
             SELECT b.name, COUNT(br.book_id)
@@ -77,12 +85,11 @@ def reserve_book(book_id, reader_id):
 
         book_title = result[0]
 
-
         # Создаем бронь в BookReservations
         cursor.execute("""
             INSERT INTO BookReservations (name, book_id, reader_id, staff_id, reservation_date) 
             VALUES (%s, %s, %s, %s, CURRENT_DATE)
-        """, (book_title, book_id, reader_id, 1))  # Используйте фактический staff_id
+        """, (book_title, book_id, reader_id, 0))  # Используйте фактический staff_id
         reservation_id = cursor.lastrowid
 
         # Создаем запись в BookLoans
@@ -90,7 +97,7 @@ def reserve_book(book_id, reader_id):
         cursor.execute("""
             INSERT INTO BookLoans (book_id, reader_id, staff_id, issue_date, return_period) 
             VALUES (%s, %s, %s, CURRENT_DATE, %s)
-        """, (book_id, reader_id, 1, return_date))  # Используйте фактический staff_id
+        """, (book_id, reader_id, 0, return_date))  # Используйте фактический staff_id
         loan_id = cursor.lastrowid
 
         # Уменьшаем количество доступных копий
@@ -98,6 +105,7 @@ def reserve_book(book_id, reader_id):
         conn.commit()
 
         return reservation_id, loan_id, return_date
+
 
 def get_user_reservations(reader_id):
     conn = create_connection()
