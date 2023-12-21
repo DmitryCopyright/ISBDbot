@@ -232,10 +232,7 @@ async def delete_book_id_entered(message: types.Message, state: FSMContext):
 
     result = delete_book(book_id)
 
-    if result:
-        await message.answer(f"Книга с ID {book_id} успешно удалена.")
-    else:
-        await message.answer(f"Не удалось удалить книгу с ID {book_id}.")
+    await message.answer(f"Книга с ID {book_id} успешно удалена.")
     await state.set_state(None)
 
 
@@ -290,11 +287,7 @@ async def delete_genre_id_entered(message: types.Message, state: FSMContext):
 
     result = delete_genre(genre_id)
 
-    if result:
-        await message.answer(f"Жанр с ID {genre_id} успешно удален.")
-    else:
-        await message.answer(f"Не удалось удалить жанр с ID {genre_id}.")
-
+    await message.answer(f"Жанр с ID {genre_id} успешно удален.")
     await state.set_state(None)
 # endregion
 
@@ -341,12 +334,7 @@ async def delete_author_id_entered(message: types.Message, state: FSMContext):
         return
 
     result = delete_author(author_id)
-
-    if result:
-        await message.answer(f"Автор с ID {author_id} успешно удален.")
-    else:
-        await message.answer(f"Не удалось удалить автора с ID {author_id}.")
-
+    await message.answer(f"Не удалось удалить автора с ID {author_id}.")
     await state.set_state(None)
 
 
@@ -401,11 +389,7 @@ async def delete_publisher_id_entered(message: types.Message, state: FSMContext)
 
     result = delete_publisher(publisher_id)
 
-    if result:
-        await message.answer(f"Издатель с ID {publisher_id} успешно удален.")
-    else:
-        await message.answer(f"Не удалось удалить издателя с ID {publisher_id}.")
-
+    await message.answer(f"Не удалось удалить издателя с ID {publisher_id}.")
     await state.set_state(None)
 
 
@@ -460,11 +444,7 @@ async def delete_department_id_entered(message: types.Message, state: FSMContext
 
     result = delete_department(department_id)
 
-    if result:
-        await message.answer(f"Отдел с ID {department_id} успешно удален.")
-    else:
-        await message.answer(f"Не удалось удалить отдел с ID {department_id}.")
-
+    await message.answer(f"Не удалось удалить отдел с ID {department_id}.")
     await state.set_state(None)
 # endregion
 
