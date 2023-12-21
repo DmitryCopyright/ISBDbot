@@ -402,7 +402,7 @@ async def cmd_add_department(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
 
     if user_data.get("staff_logged_in"):
-        await ask_question(message, state, "Введите название отдела:", AddPublisher.waiting_for_publisher_name)
+        await ask_question(message, state, "Введите название отдела:", AddDepartment.waiting_for_department_name)
     else:
         await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
@@ -443,8 +443,7 @@ async def delete_department_id_entered(message: types.Message, state: FSMContext
         return
 
     result = delete_department(department_id)
-
-    await message.answer(f"Не удалось удалить отдел с ID {department_id}.")
+    await message.answer(f"Отдел с ID {department_id} успешно удален.")
     await state.set_state(None)
 # endregion
 

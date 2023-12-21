@@ -43,21 +43,18 @@ async def cmd_register(message: types.Message, state: FSMContext):
     if user_data.get("logged_in"):
         await message.answer("Вы уже зарегистрированы и вошли в систему.")
     else:
-        await message.answer("Придумайте имя пользователя:")
-        await state.set_state(Registration.waiting_for_name)
+        await ask_question(message, state, "Придумайте имя пользователя:", Registration.waiting_for_name)
 
 @router.message(Registration.waiting_for_name)
 async def name_entered(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await message.answer("Введите ваш номер:")
-    await state.set_state(Registration.waiting_for_contact_data)
+    await ask_question(message, state, "Введите ваш номер:", Registration.waiting_for_contact_data)
 
 
 @router.message(Registration.waiting_for_contact_data)
 async def contact_data_entered(message: types.Message, state: FSMContext):
     await state.update_data(contact_data=message.text)
-    await message.answer("Придумайте пароль:")
-    await state.set_state(Registration.waiting_for_reader_number)
+    await ask_question(message, state, "Придумайте пароль:", Registration.waiting_for_reader_number)
 
 
 @router.message(Registration.waiting_for_reader_number)
@@ -83,16 +80,12 @@ async def cmd_login(message: types.Message, state: FSMContext):
     if user_data.get("logged_in") or user_data.get("staff_logged_in"):
         await message.answer("Вы уже вошли в систему.")
     else:
-        await message.answer("Введите имя пользователя:")
-        await state.set_state(Login.waiting_for_name)
-
+        await ask_question(message, state, "Введите имя пользователя:", Login.waiting_for_name)
 
 @router.message(Login.waiting_for_name)
 async def login_name_entered(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await message.answer("Введите ваш пароль:")
-    await state.set_state(Login.waiting_for_reader_number)
-
+    await ask_question(message, state, "Введите ваш пароль:", Login.waiting_for_reader_number)
 
 @router.message(Login.waiting_for_reader_number)
 async def login_reader_number_entered(message: types.Message, state: FSMContext):
@@ -102,8 +95,8 @@ async def login_reader_number_entered(message: types.Message, state: FSMContext)
 
     if reader_id:
         await state.update_data(logged_in=True, reader_id=reader_id)
-        await state.set_state(UserLoggedIn.active)
-        await message.answer("Вход выполнен. Добро пожаловать, " + data['name'] + "!")
+        await ask_question(message, state, "Вход выполнен. Добро пожаловать, " + data['name'] + "!",
+                           UserLoggedIn.active)
     else:
         await message.answer("Неправильное имя пользователя или пароль")
         await state.set_state(None)
@@ -112,9 +105,8 @@ async def login_reader_number_entered(message: types.Message, state: FSMContext)
 @router.message(Command(commands=["search"]))
 async def cmd_search(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
-    if user_data.get("logged_in"):
-        await message.answer("Введите запрос для поиска:")
-        await state.set_state(BookSearch.waiting_for_query)
+    if user_data.get("logged_in") or user_data.get("staff_logged_in"):
+        await ask_question(message, state, "Введите запрос для поиска:", BookSearch.waiting_for_query)
     else:
         await message.answer("Пожалуйста, войдите в систему для использования этой команды.")
 
@@ -135,8 +127,7 @@ async def search_query_entered(message: types.Message, state: FSMContext):
 
 @router.message(Command(commands=["bookdetails"]))
 async def cmd_book_details(message: types.Message, state: FSMContext):
-    await message.answer("Введите ID книги для получения деталей:")
-    await state.set_state(BookDetails.waiting_for_book_id)
+    await ask_question(message, state, "Введите ID книги для получения деталей:", BookDetails.waiting_for_book_id)
 
 @router.message(BookDetails.waiting_for_book_id)
 async def book_id_entered(message: types.Message, state: FSMContext):
@@ -162,7 +153,7 @@ async def cmd_exit(message: types.Message, state: FSMContext):
 @router.message(Command(commands=["availablebooks"]))
 async def cmd_available_books(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
-    if user_data.get("logged_in"):
+    if user_data.get("logged_in") or user_data.get("staff_logged_in"):
         books = get_available_books()
         if books:
             response = "\n".join([f"ID: {book['book_id']} Автор: {book['author']} Название: {book['name']}" for book in books])
@@ -176,8 +167,7 @@ async def cmd_available_books(message: types.Message, state: FSMContext):
 async def cmd_reserve_book(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in"):
-        await message.answer("Введите ID книги для бронирования:")
-        await state.set_state(ReserveBook.waiting_for_book_id)
+        await ask_question(message, state, "Введите ID книги для бронирования:", ReserveBook.waiting_for_book_id)
     else:
         await message.answer("Пожалуйста, войдите в систему для использования этой команды.")
 
@@ -215,6 +205,7 @@ async def cmd_my_reservations(message: types.Message, state: FSMContext):
         await message.answer("Пожалуйста, войдите в систему для использования этой команды.")
 
 async def ask_question(message: types.Message, state: FSMContext, question: str, state_name: State):
+    await state.set_state(None)
     await message.answer(question)
     await state.set_state(state_name)
 
