@@ -334,7 +334,7 @@ async def delete_author_id_entered(message: types.Message, state: FSMContext):
         return
 
     result = delete_author(author_id)
-    await message.answer(f"Не удалось удалить автора с ID {author_id}.")
+    await message.answer(f"Автор с ID {author_id} успешно удален.")
     await state.set_state(None)
 
 
@@ -388,8 +388,7 @@ async def delete_publisher_id_entered(message: types.Message, state: FSMContext)
         return
 
     result = delete_publisher(publisher_id)
-
-    await message.answer(f"Не удалось удалить издателя с ID {publisher_id}.")
+    await message.answer(f"Издатель с ID {publisher_id} успешно удален.")
     await state.set_state(None)
 
 
