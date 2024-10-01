@@ -3,7 +3,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from DatabaseInteractions.admin_database_updates import delete_book, change_copies, add_book, delete_genre, add_genre, add_department, \
+from Configuration.db_operations import *
+from DatabaseInteractions.admin_database_updates import delete_book, change_copies, add_book, add_genre, add_department, \
     add_publisher, add_author, delete_author, delete_department, delete_publisher
 from Handlers.bot_handlers import router, ask_question
 
@@ -84,6 +85,7 @@ async def book_ISBN_entered(message: types.Message, state: FSMContext):
 
 
 @router.message(AddBook.waiting_for_author_id)
+@handle_db_errors
 async def author_id_entered(message: types.Message, state: FSMContext):
     try:
         author_id = int(message.text)
@@ -96,6 +98,7 @@ async def author_id_entered(message: types.Message, state: FSMContext):
 
 
 @router.message(AddBook.waiting_for_publisher_id)
+@handle_db_errors
 async def publisher_id_entered(message: types.Message, state: FSMContext):
     try:
         publisher_id = int(message.text)
@@ -108,6 +111,7 @@ async def publisher_id_entered(message: types.Message, state: FSMContext):
 
 
 @router.message(AddBook.waiting_for_genre_id)
+@handle_db_errors
 async def genre_id_entered(message: types.Message, state: FSMContext):
     try:
         genre_id = int(message.text)
@@ -120,6 +124,7 @@ async def genre_id_entered(message: types.Message, state: FSMContext):
 
 
 @router.message(AddBook.waiting_for_department_id)
+@handle_db_errors
 async def department_id_entered(message: types.Message, state: FSMContext):
     try:
         department_id = int(message.text)
@@ -132,6 +137,7 @@ async def department_id_entered(message: types.Message, state: FSMContext):
 
 
 @router.message(AddBook.waiting_for_copies)
+@handle_db_errors
 async def copies_entered(message: types.Message, state: FSMContext):
     try:
         copies = int(message.text)
@@ -149,6 +155,7 @@ async def copies_entered(message: types.Message, state: FSMContext):
         await message.answer(result)
 
     await state.set_state(None)
+
 
 
 # endregion
@@ -220,8 +227,8 @@ async def cmd_delete_book(message: types.Message, state: FSMContext):
         await message.answer("Пожалуйста, войдите в систему как персонал для использования этой команды.")
 
 
-# Function to handle the entered book ID for deletion
 @router.message(DeleteBook.waiting_for_book_id)
+@handle_db_errors
 async def delete_book_id_entered(message: types.Message, state: FSMContext):
     try:
         book_id = int(message.text)
@@ -231,7 +238,6 @@ async def delete_book_id_entered(message: types.Message, state: FSMContext):
         return
 
     result = delete_book(book_id)
-
     await message.answer(f"Книга с ID {book_id} успешно удалена.")
     await state.set_state(None)
 
@@ -276,18 +282,17 @@ async def cmd_delete_genre(message: types.Message, state: FSMContext):
 
 
 
-# Function to handle the entered genre ID for deletion
-@router.message(DeleteGenre.waiting_for_genre_id)
-async def delete_genre_id_entered(message: types.Message, state: FSMContext):
+@router.message(DeleteAuthor.waiting_for_author_id)
+@handle_db_errors
+async def delete_author_id_entered(message: types.Message, state: FSMContext):
     try:
-        genre_id = int(message.text)
+        author_id = int(message.text)
     except ValueError:
-        await message.answer("Пожалуйста, введите корректный ID жанра (число).")
+        await message.answer("Пожалуйста, введите корректный ID автора (число).")
         return
 
-    result = delete_genre(genre_id)
-
-    await message.answer(f"Жанр с ID {genre_id} успешно удален.")
+    result = delete_author(author_id)
+    await message.answer(f"Автор с ID {author_id} успешно удален.")
     await state.set_state(None)
 # endregion
 
@@ -378,8 +383,8 @@ async def cmd_delete_publisher(message: types.Message, state: FSMContext):
 
 
 
-# Function to handle the entered publisher ID for deletion
 @router.message(DeletePublishers.waiting_for_publisher_id)
+@handle_db_errors
 async def delete_publisher_id_entered(message: types.Message, state: FSMContext):
     try:
         publisher_id = int(message.text)
@@ -434,6 +439,7 @@ async def cmd_delete_department(message: types.Message, state: FSMContext):
 
 # Function to handle the entered department ID for deletion
 @router.message(DeleteDepartments.waiting_for_department_id)
+@handle_db_errors
 async def delete_department_id_entered(message: types.Message, state: FSMContext):
     try:
         department_id = int(message.text)

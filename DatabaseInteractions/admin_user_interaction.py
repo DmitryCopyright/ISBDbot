@@ -1,4 +1,4 @@
-from db import create_connection
+from Configuration.db import create_connection
 
 
 def delete_user_reservation(reservation_id):

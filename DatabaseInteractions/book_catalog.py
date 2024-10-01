@@ -1,127 +1,120 @@
+from Configuration.db_operations import execute_query
 import datetime
-from db import *
 
 def book_available(book_id):
-    conn = create_connection()
-    with conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT copies FROM Books WHERE book_id = %s AND copies > 0", (book_id,))
-            return cursor.fetchone() is not None
+    """
+    Проверяет наличие доступных копий книги.
+    """
+    query = "SELECT copies FROM Books WHERE book_id = %s AND copies > 0"
+    return execute_query(query, (book_id,), fetchone=True) is not None
 
 def search_books(query):
-    conn = create_connection()
+    """
+    Выполняет поиск книг по названию, с возвратом автора для каждой найденной книги.
+    """
     books = []
-    with conn:
-        cursor = conn.cursor()
+    book_query = "SELECT book_id, name, author_id FROM Books WHERE name LIKE %s"
+    rows = execute_query(book_query, ('%' + query + '%',), fetchall=True)
 
-        cursor.execute("SELECT book_id, name, author_id FROM Books WHERE name LIKE %s", ('%'+query+'%',))
-        rows = cursor.fetchall()
-        for row in rows:
-            cursor.execute("SELECT name FROM Authors WHERE author_id = %s", (row[2],))
-            author = cursor.fetchone()[0]
-            books.append({'book_id': row[0], 'name': row[1], 'author': author})
+    for row in rows:
+        author_query = "SELECT name FROM Authors WHERE author_id = %s"
+        author = execute_query(author_query, (row[2],), fetchone=True)[0]
+        books.append({'book_id': row[0], 'name': row[1], 'author': author})
+
     return books
 
 def get_book_details(book_id):
-    conn = create_connection()
-    with conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, ISBN, author_id, genre_id, copies FROM Books WHERE book_id = %s", (book_id,))
-        row = cursor.fetchone()
-        if row:
-            # Fetch author name
-            cursor.execute("SELECT name FROM Authors WHERE author_id = %s", (row[2],))
-            author = cursor.fetchone()[0]
+    """
+    Получает подробную информацию о книге, включая автора и жанр.
+    """
+    book_query = "SELECT name, ISBN, author_id, genre_id, copies FROM Books WHERE book_id = %s"
+    row = execute_query(book_query, (book_id,), fetchone=True)
 
-            # Fetch genre name
-            cursor.execute("SELECT name FROM Genres WHERE genre_id = %s", (row[3],))
-            genre = cursor.fetchone()[0]
+    if row:
+        author_query = "SELECT name FROM Authors WHERE author_id = %s"
+        author = execute_query(author_query, (row[2],), fetchone=True)[0]
 
-            return {'name': row[0], 'ISBN': row[1], 'author': author, 'genre': genre, 'copies': row[4]}
-        else:
-            return None
+        genre_query = "SELECT name FROM Genres WHERE genre_id = %s"
+        genre = execute_query(genre_query, (row[3],), fetchone=True)[0]
+
+        return {'name': row[0], 'ISBN': row[1], 'author': author, 'genre': genre, 'copies': row[4]}
+
+    return None
 
 def get_available_books():
-    conn = create_connection()
-    available_books = []
-    with conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT Books.book_id, Books.name, Authors.name 
-            FROM Books
-            JOIN Authors ON Books.author_id = Authors.author_id
-            WHERE copies > 0
-        """)
-        rows = cursor.fetchall()
-        for row in rows:
-            available_books.append({'book_id': row[0], 'name': row[1], 'author': row[2]})
+    """
+    Получает список доступных книг с их авторами.
+    """
+    query = """
+        SELECT Books.book_id, Books.name, Authors.name 
+        FROM Books
+        JOIN Authors ON Books.author_id = Authors.author_id
+        WHERE copies > 0
+    """
+    rows = execute_query(query, fetchall=True)
+    available_books = [{'book_id': row[0], 'name': row[1], 'author': row[2]} for row in rows]
+
     return available_books
 
 def reserve_book(book_id, reader_id):
-    conn = create_connection()
-    with conn:
-        cursor = conn.cursor()
+    """
+    Резервирует книгу для пользователя, создает бронь и запись о выдаче книги.
+    """
+    # Проверяем, есть ли у пользователя уже активные бронирования
+    query = """
+        SELECT COUNT(*) FROM BookReservations
+        WHERE reader_id = %s AND reservation_date IS NOT NULL
+    """
+    if execute_query(query, (reader_id,), fetchone=True)[0] >= 1:
+        return "Одновременно допускается не больше одного бронирования!"
 
-        # Проверяем, есть ли у пользователя уже активные бронирования
-        cursor.execute("""
-            SELECT COUNT(*) FROM BookReservations
-            WHERE reader_id = %s AND reservation_date IS NOT NULL
-        """, (reader_id,))
-        if cursor.fetchone()[0] >= 1:
-            return "Одновременно допускается не больше одного бронирования!"
+    # Проверяем наличие книги и пользователя
+    query = """
+        SELECT b.name, COUNT(br.book_id)
+        FROM Books b 
+        LEFT JOIN BookReservations br ON br.book_id = b.book_id AND br.reader_id = %s AND br.reservation_date IS NOT NULL
+        WHERE b.book_id = %s
+        GROUP BY b.name
+    """
+    result = execute_query(query, (reader_id, book_id), fetchone=True)
 
-        # Проверяем наличие книги и пользователя, а также предыдущие бронирования
-        cursor.execute("""
-            SELECT b.name, COUNT(br.book_id)
-            FROM Books b 
-            LEFT JOIN BookReservations br ON br.book_id = b.book_id AND br.reader_id = %s AND br.reservation_date IS NOT NULL
-            WHERE b.book_id = %s
-            GROUP BY b.name
-        """, (reader_id, book_id))
-        result = cursor.fetchone()
+    if not result or result[1] > 0:
+        return None  # Книга не найдена или уже забронирована пользователем
 
-        if cursor.rowcount == 0 or result[1] > 0:
-            return None  # Книга не найдена или уже забронирована пользователем
+    book_title = result[0]
 
-        book_title = result[0]
+    # Создаем бронь в BookReservations
+    query = """
+        INSERT INTO BookReservations (name, book_id, reader_id, staff_id, reservation_date) 
+        VALUES (%s, %s, %s, %s, CURRENT_DATE)
+    """
+    execute_query(query, (book_title, book_id, reader_id, 1))
 
-        # Создаем бронь в BookReservations
-        cursor.execute("""
-            INSERT INTO BookReservations (name, book_id, reader_id, staff_id, reservation_date) 
-            VALUES (%s, %s, %s, %s, CURRENT_DATE)
-        """, (book_title, book_id, reader_id, 0))  # Используйте фактический staff_id
-        reservation_id = cursor.lastrowid
+    # Создаем запись в BookLoans
+    return_date = datetime.date.today() + datetime.timedelta(days=14)
+    query = """
+        INSERT INTO BookLoans (book_id, reader_id, staff_id, issue_date, return_period) 
+        VALUES (%s, %s, %s, CURRENT_DATE, %s)
+    """
+    execute_query(query, (book_id, reader_id, 1, return_date))
 
-        # Создаем запись в BookLoans
-        return_date = datetime.date.today() + datetime.timedelta(days=14)
-        cursor.execute("""
-            INSERT INTO BookLoans (book_id, reader_id, staff_id, issue_date, return_period) 
-            VALUES (%s, %s, %s, CURRENT_DATE, %s)
-        """, (book_id, reader_id, 0, return_date))  # Используйте фактический staff_id
-        loan_id = cursor.lastrowid
+    # Уменьшаем количество доступных копий
+    query = "UPDATE Books SET copies = copies - 1 WHERE book_id = %s"
+    execute_query(query, (book_id,))
 
-        # Уменьшаем количество доступных копий
-        cursor.execute("UPDATE Books SET copies = copies - 1 WHERE book_id = %s", (book_id,))
-        conn.commit()
-
-        return reservation_id, loan_id, return_date
-
+    return "Книга успешно забронирована", return_date
 
 def get_user_reservations(reader_id):
-    conn = create_connection()
-    reservations = []
-    with conn:
-        cursor = conn.cursor()
-
-        # Получение резерваций по reader_id
-        cursor.execute("""
-            SELECT br.reservation_id, b.name, br.reservation_date 
-            FROM BookReservations br
-            JOIN Books b ON br.book_id = b.book_id
-            WHERE br.reader_id = %s
-        """, (reader_id,))
-        rows = cursor.fetchall()
-        for row in rows:
-            reservations.append({'reservation_id': row[0], 'book_name': row[1], 'reservation_date': row[2]})
+    """
+    Возвращает список текущих бронирований пользователя.
+    """
+    query = """
+        SELECT br.reservation_id, b.name, br.reservation_date 
+        FROM BookReservations br
+        JOIN Books b ON br.book_id = b.book_id
+        WHERE br.reader_id = %s
+    """
+    rows = execute_query(query, (reader_id,), fetchall=True)
+    reservations = [{'reservation_id': row[0], 'book_name': row[1], 'reservation_date': row[2]} for row in rows]
 
     return reservations

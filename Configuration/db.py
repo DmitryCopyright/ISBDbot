@@ -6,9 +6,9 @@ def create_connection():
     conn = None
     try:
         conn = psycopg2.connect(
-            dbname="postgres",
-            user="postgres",
-            password="isbditmovolnenkodemidovich",
+            dbname="studs",
+            user="s335065",
+            password="RnIXdSSUHSXRZDkr",
             host="localhost",
             port="5432"
         )
