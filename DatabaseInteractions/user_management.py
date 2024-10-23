@@ -6,13 +6,16 @@ def register_user(name, contact_data, reader_number):
     Регистрирует нового пользователя, если имя не существует в базе данных.
     """
     # Проверка на существование пользователя с таким именем
-    if check_if_exists("SELECT * FROM Readers WHERE name = %s", (name,)):
+    if check_if_exists("Readers", "name", name):
         return "Такое имя пользователя уже зарегистрировано!"
 
     # Регистрация пользователя
-    query = '''INSERT INTO Readers(name, contact_data, reader_number)
-               VALUES(%s, %s, %s) RETURNING reader_id'''
-    return execute_query(query, (name, contact_data, reader_number), fetchone=True)[0]
+    user_data = {
+        'name': name,
+        'contact_data': contact_data,
+        'reader_number': reader_number
+    }
+    return add_record("Readers", user_data, "reader_id")
 
 def log_in_user(name, reader_number):
     """
@@ -26,19 +29,16 @@ def log_in_staff(name):
     """
     Проверяет существование сотрудника в базе данных по имени.
     """
-    query = '''SELECT staff_id FROM LibraryStaff WHERE name = %s'''
-    result = execute_query(query, (name,), fetchone=True)
-    return result[0] if result else None
+    return get_record_by_id("LibraryStaff", "name", name, "staff_id")
 
 def get_user_profile(user_id):
     """
     Возвращает профиль пользователя по его ID.
     """
-    query = '''SELECT name, contact_data, reader_number FROM Readers WHERE reader_id = %s'''
-    return execute_query(query, (user_id,), fetchone=True)
+    return get_record_by_id("Readers", "reader_id", user_id, "name, contact_data, reader_number")
 
 def user_exists(user_id):
     """
     Проверяет, существует ли пользователь с данным ID.
     """
-    return check_if_exists("SELECT 1 FROM Readers WHERE reader_id = %s", (user_id,))
+    return check_if_exists("Readers", "reader_id", user_id)

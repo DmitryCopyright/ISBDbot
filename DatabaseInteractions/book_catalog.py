@@ -1,5 +1,11 @@
-from Configuration.db_operations import execute_query
+from Configuration.db_operations import *
 import datetime
+
+def delete_user_reservation(reservation_id):
+    """
+    Удаляет бронирование книги по идентификатору бронирования.
+    """
+    return delete_record("BookReservations", "reservation_id", reservation_id)
 
 def book_available(book_id):
     """
@@ -17,8 +23,7 @@ def search_books(query):
     rows = execute_query(book_query, ('%' + query + '%',), fetchall=True)
 
     for row in rows:
-        author_query = "SELECT name FROM Authors WHERE author_id = %s"
-        author = execute_query(author_query, (row[2],), fetchone=True)[0]
+        author = get_record_by_id("Authors", "author_id", row[2], "name")
         books.append({'book_id': row[0], 'name': row[1], 'author': author})
 
     return books
@@ -27,15 +32,11 @@ def get_book_details(book_id):
     """
     Получает подробную информацию о книге, включая автора и жанр.
     """
-    book_query = "SELECT name, ISBN, author_id, genre_id, copies FROM Books WHERE book_id = %s"
-    row = execute_query(book_query, (book_id,), fetchone=True)
+    row = get_record_by_id("Books", "book_id", book_id, "name, ISBN, author_id, genre_id, copies")
 
     if row:
-        author_query = "SELECT name FROM Authors WHERE author_id = %s"
-        author = execute_query(author_query, (row[2],), fetchone=True)[0]
-
-        genre_query = "SELECT name FROM Genres WHERE genre_id = %s"
-        genre = execute_query(genre_query, (row[3],), fetchone=True)[0]
+        author = get_record_by_id("Authors", "author_id", row[2], "name")
+        genre = get_record_by_id("Genres", "genre_id", row[3], "name")
 
         return {'name': row[0], 'ISBN': row[1], 'author': author, 'genre': genre, 'copies': row[4]}
 
