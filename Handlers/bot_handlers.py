@@ -89,16 +89,21 @@ async def login_name_entered(message: types.Message, state: FSMContext):
 
 @router.message(Login.waiting_for_reader_number)
 async def login_reader_number_entered(message: types.Message, state: FSMContext):
-    await state.update_data(reader_number=message.text)
     data = await state.get_data()
-    reader_id = log_in_user(data['name'], data['reader_number'])
+    name = data['name']
+    reader_number = message.text
 
+    (valid_data, error) = validate_login(name, reader_number)
+    if error:
+        await message.answer(error)
+        return
+
+    reader_id = log_in_user(valid_data[0], valid_data[1])
     if reader_id:
         await state.update_data(logged_in=True, reader_id=reader_id)
-        await ask_question(message, state, "Вход выполнен. Добро пожаловать, " + data['name'] + "!",
-                           UserLoggedIn.active)
+        await ask_question(message, state, "Вход выполнен. Добро пожаловать, " + name + "!", UserLoggedIn.active)
     else:
-        await message.answer("Неправильное имя пользователя или пароль")
+        await message.answer("Неправильное имя пользователя или пароль.")
         await state.set_state(None)
 
 
@@ -174,23 +179,20 @@ async def cmd_reserve_book(message: types.Message, state: FSMContext):
 @router.message(ReserveBook.waiting_for_book_id)
 async def book_id_to_reserve_entered(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
-    reader_id = user_data.get("reader_id")  # Используйте reader_id вместо user_id
-    try:
-        book_id = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите корректный ID книги (число).")
-        return
-    result = reserve_book(book_id, reader_id)
+    reader_id = user_data.get("reader_id")
 
+    book_id, error = validate_book_id(message.text)
+    if error:
+        await message.answer(error)
+        return
+
+    result = reserve_book(book_id, reader_id)
     if isinstance(result, str):
-        # Если функция вернула строку, то это сообщение об ошибке
         await message.answer(result)
     elif result:
-        # Если функция вернула кортеж, то это успешное бронирование
         reservation_id, loan_id, return_date = result
         await message.answer(f"Книга успешно забронирована. Вам необходимо вернуть книгу до {return_date}.")
     else:
-        # В случае других ситуаций (например, книга не найдена)
         await message.answer("Не удалось забронировать книгу.")
     await state.set_state(None)
 
@@ -222,3 +224,33 @@ import Handlers.reservations_handlers
 # Функция для регистрации всех обработчиков
 def register_handlers(dp: Dispatcher):
     dp.include_router(router)
+
+def validate_book_id(book_id: str):
+    """
+    Проверяет, является ли book_id числом.
+    """
+    try:
+        return int(book_id), None
+    except ValueError:
+        return None, "Пожалуйста, введите корректный ID книги (число)."
+
+def validate_user_input(data: str, field_name: str):
+    """
+    Проверяет, что пользователь ввел строку не короче 2 символов.
+    """
+    if len(data.strip()) < 2:
+        return None, f"{field_name} должно содержать минимум 2 символа."
+    return data, None
+
+def validate_login(name: str, reader_number: str):
+    """
+    Проверяет, корректны ли имя пользователя и номер читателя.
+    """
+    name_valid, error = validate_user_input(name, "Имя пользователя")
+    if error:
+        return None, error
+
+    if len(reader_number) < 2:
+        return None, "Номер читателя должен содержать минимум 2 символа."
+
+    return (name_valid, reader_number), None

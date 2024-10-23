@@ -18,19 +18,38 @@ async def cmd_staff_login(message: types.Message, state: FSMContext):
     if user_data.get("logged_in") or user_data.get("staff_logged_in"):
         await message.answer("You are already logged in.")
     else:
-        await message.answer("Enter your staff name:")
+        await message.answer("Введите имя сотрудника:")
         await state.set_state(StaffLogin.waiting_for_staff_name)
 
 @router.message(StaffLogin.waiting_for_staff_name)
 async def staff_login_name_entered(message: types.Message, state: FSMContext):
-    await state.update_data(staff_name=message.text)
-    data = await state.get_data()
-    staff_id = log_in_staff(data['staff_name'])
+    staff_name, error = validate_text_input(message.text, "Имя сотрудника")
+
+    if error:
+        await message.answer(error)
+        return
+
+    staff_id = log_in_staff(staff_name)
 
     if staff_id:
         await state.update_data(staff_logged_in=True, staff_id=staff_id)
         await state.set_state(StaffLoggedIn.active)
-        await message.answer("Login successful. Welcome, " + data['staff_name'] + "!")
+        await message.answer(f"Вход выполнен. Добро пожаловать, {staff_name}!")
     else:
-        await message.answer("Incorrect staff name.")
+        await message.answer("Неверное имя сотрудника.")
         await state.set_state(None)
+
+def validate_text_input(input_text: str, field_name: str):
+    """
+    Проверяет корректность текстового ввода.
+
+    :param input_text: Текст для проверки
+    :param field_name: Название поля для отображения в сообщении об ошибке
+    :return: (str, str) - Возвращает кортеж, где первый элемент — очищенный текст, второй — сообщение об ошибке (если есть)
+    """
+    cleaned_text = input_text.strip()
+
+    if not cleaned_text:
+        return None, f"Пожалуйста, введите корректное значение для {field_name}."
+
+    return cleaned_text, None

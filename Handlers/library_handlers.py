@@ -60,6 +60,24 @@ class AddDepartment(StatesGroup):
 class DeleteDepartments(StatesGroup):
     waiting_for_department_id = State()
 
+def validate_int_input(input_data: str, field_name: str):
+    """
+    Валидация ввода данных для целочисленных значений.
+    Возвращает кортеж (значение, None) в случае успеха или (None, сообщение об ошибке).
+    """
+    try:
+        return int(input_data), None
+    except ValueError:
+        return None, f"Пожалуйста, введите корректный {field_name} (число)."
+
+def validate_str_input(input_data: str, field_name: str):
+    """
+    Валидация строкового ввода.
+    Возвращает кортеж (значение, None) в случае успеха или (None, сообщение об ошибке).
+    """
+    if len(input_data.strip()) == 0:
+        return None, f"Поле {field_name} не может быть пустым."
+    return input_data.strip(), None
 
 # region Add Book
 @router.message(Command(commands=["addbook"]))
@@ -87,62 +105,53 @@ async def book_ISBN_entered(message: types.Message, state: FSMContext):
 @router.message(AddBook.waiting_for_author_id)
 @handle_db_errors
 async def author_id_entered(message: types.Message, state: FSMContext):
-    try:
-        author_id = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите корректный ID автора (число).")
+    author_id, error = validate_int_input(message.text, "ID автора")
+    if error:
+        await message.answer(error)
         return
 
     await state.update_data(author_id=author_id)
     await ask_question(message, state, "Введите ID издателя книги:", AddBook.waiting_for_publisher_id)
 
-
 @router.message(AddBook.waiting_for_publisher_id)
 @handle_db_errors
 async def publisher_id_entered(message: types.Message, state: FSMContext):
-    try:
-        publisher_id = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите корректный ID издателя (число).")
+    publisher_id, error = validate_int_input(message.text, "ID издателя")
+    if error:
+        await message.answer(error)
         return
 
     await state.update_data(publisher_id=publisher_id)
     await ask_question(message, state, "Введите ID жанра книги:", AddBook.waiting_for_genre_id)
 
-
 @router.message(AddBook.waiting_for_genre_id)
 @handle_db_errors
 async def genre_id_entered(message: types.Message, state: FSMContext):
-    try:
-        genre_id = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите корректный ID жанра (число).")
+    genre_id, error = validate_int_input(message.text, "ID жанра")
+    if error:
+        await message.answer(error)
         return
 
     await state.update_data(genre_id=genre_id)
     await ask_question(message, state, "Введите ID отдела библиотеки для книги:", AddBook.waiting_for_department_id)
 
-
 @router.message(AddBook.waiting_for_department_id)
 @handle_db_errors
 async def department_id_entered(message: types.Message, state: FSMContext):
-    try:
-        department_id = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите корректный ID отдела (число).")
+    department_id, error = validate_int_input(message.text, "ID отдела")
+    if error:
+        await message.answer(error)
         return
 
     await state.update_data(department_id=department_id)
     await ask_question(message, state, "Введите количество копий книги:", AddBook.waiting_for_copies)
 
-
 @router.message(AddBook.waiting_for_copies)
 @handle_db_errors
 async def copies_entered(message: types.Message, state: FSMContext):
-    try:
-        copies = int(message.text)
-    except ValueError:
-        await message.answer("Пожалуйста, введите корректное количество копий (число).")
+    copies, error = validate_int_input(message.text, "количество копий")
+    if error:
+        await message.answer(error)
         return
 
     data = await state.get_data()
@@ -155,8 +164,6 @@ async def copies_entered(message: types.Message, state: FSMContext):
         await message.answer(result)
 
     await state.set_state(None)
-
-
 
 # endregion
 
