@@ -100,3 +100,19 @@ create table if not exists Ratings
     rate_amount         int not null,
     rate_text           text
 );
+
+CREATE INDEX idx_books_name ON Books(name);
+CREATE INDEX idx_books_author_id ON Books(author_id);
+CREATE INDEX idx_books_genre_id ON Books(genre_id);
+CREATE INDEX idx_authors_name ON Authors(name);
+CREATE INDEX idx_publishers_name ON Publishers(name);
+CREATE INDEX idx_genres_name ON Genres(name);
+CREATE INDEX idx_readers_name ON Readers(name);
+CREATE INDEX idx_readers_reader_number ON Readers(reader_number);
+CREATE INDEX idx_book_loans_reader_id ON BookLoans(reader_id);
+CREATE INDEX idx_book_loans_book_id ON BookLoans(book_id);
+CREATE INDEX idx_book_reservations_reader_id ON BookReservations(reader_id);
+CREATE INDEX idx_book_reservations_book_id ON BookReservations(book_id);
+CREATE INDEX idx_penalties_reader_id ON Penalties(reader_id);
+CREATE INDEX idx_ratings_book_id ON Ratings(book_id);
+CREATE INDEX idx_ratings_reader_id ON Ratings(reader_id);
