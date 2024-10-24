@@ -123,21 +123,22 @@ async def async_handle_search_query_input(message: types.Message, state: FSMCont
     await state.set_state(None)
 
 @router.message(Command(commands=["bookdetails"]))
-async def async_handle_book_details_command(message: types.Message, state: FSMContext):
-    await async_ask_question(message, state, MESSAGES["enter_book_id"], BookDetailsStates.waiting_for_book_id)
+async def cmd_book_details(message: types.Message, state: FSMContext):
+    await async_ask_question(message, state, "Введите ID книги для получения деталей:", BookDetailsStates.waiting_for_book_id)
 
 @router.message(BookDetailsStates.waiting_for_book_id)
-async def async_handle_book_id_input(message: types.Message, state: FSMContext):
+async def book_id_entered(message: types.Message, state: FSMContext):
     try:
         book_id = int(message.text)
     except ValueError:
-        await message.answer(MESSAGES["invalid_book_id"])
+        await message.answer("Пожалуйста, введите корректный ID книги (число).")
         return
     details = get_book_details(book_id)
     if details:
-        response = f"{MESSAGES['book_title']}: {details['name']}\n{MESSAGES['author']}: {details['author']}\nISBN: {details['ISBN']}\n{MESSAGES['genre']}: {details['genre']}\n{MESSAGES['copies']}: {details['copies']}"
+        # Формирование ответа с деталями книги
+        response = f"Название: {details['name']}\nАвтор: {details['author']}\nISBN: {details['ISBN']}\nЖанр: {details['genre']}\nКоличество: {details['copies']}"
     else:
-        response = MESSAGES["book_not_found"]
+        response = "Книга с таким ID не найдена."
     await message.answer(response)
     await state.set_state(None)
 

@@ -8,8 +8,9 @@ def register_user(name, contact_data, reader_number):
     """
     Регистрирует нового пользователя, если имя не существует в базе данных.
     """
-    if check_if_exists("Readers", "name", name):
-        return MESSAGES["user_already_registered"]
+    query = "SELECT * FROM Readers WHERE name = %s"
+    if check_if_exists(query, (name,)):
+        return MESSAGES["already_registered"]
 
     user_data = {
         'name': name,
