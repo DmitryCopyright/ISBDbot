@@ -8,56 +8,57 @@ from DatabaseInteractions.book_catalog import search_books, get_book_details, ge
 from DatabaseInteractions.user_management import register_user, log_in_user
 
 
-class Registration(StatesGroup):
-    waiting_for_name = State()
-    waiting_for_contact_data = State()
+
+class UserRegistrationStates(StatesGroup):
+    waiting_for_user_name = State()
+    waiting_for_contact_info = State()
     waiting_for_reader_number = State()
 
 
-# Определение состояний для входа
-class Login(StatesGroup):
-    waiting_for_name = State()
+
+class UserLoginStates(StatesGroup):
+    waiting_for_user_name = State()
     waiting_for_reader_number = State()
 
-class BookSearch(StatesGroup):
-    waiting_for_query = State()
+class BookSearchStates(StatesGroup):
+    waiting_for_search_query = State()
 
-class BookDetails(StatesGroup):
+class BookDetailsStates(StatesGroup):
     waiting_for_book_id = State()
 
-class UserLoggedIn(StatesGroup):
-    active = State()
+class UserSessionState(StatesGroup):
+    active_session = State()
 
-class ReserveBook(StatesGroup):
+class BookReservationStates(StatesGroup):
     waiting_for_book_id = State()
 
 router = Router()
 
 @router.message(Command(commands=["start"]))
-async def cmd_start(message: types.Message, state: FSMContext):
+async def async_handle_start_command(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(MESSAGES["start"])
 
 @router.message(Command(commands=["register"]))
-async def cmd_register(message: types.Message, state: FSMContext):
+async def async_handle_register_command(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in"):
         await message.answer(MESSAGES["already_registered"])
     else:
-        await ask_question(message, state, MESSAGES["enter_name"], Registration.waiting_for_name)
+        await async_ask_question(message, state, MESSAGES["enter_name"], UserRegistrationStates.waiting_for_user_name)
 
-@router.message(Registration.waiting_for_name)
-async def name_entered(message: types.Message, state: FSMContext):
+@router.message(UserRegistrationStates.waiting_for_user_name)
+async def async_handle_user_name_input(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await ask_question(message, state, MESSAGES["enter_contact_data"], Registration.waiting_for_contact_data)
+    await async_ask_question(message, state, MESSAGES["enter_contact_data"], UserRegistrationStates.waiting_for_contact_info)
 
-@router.message(Registration.waiting_for_contact_data)
-async def contact_data_entered(message: types.Message, state: FSMContext):
+@router.message(UserRegistrationStates.waiting_for_contact_info)
+async def async_handle_contact_info_input(message: types.Message, state: FSMContext):
     await state.update_data(contact_data=message.text)
-    await ask_question(message, state, MESSAGES["enter_reader_number"], Registration.waiting_for_reader_number)
+    await async_ask_question(message, state, MESSAGES["enter_reader_number"], UserRegistrationStates.waiting_for_reader_number)
 
-@router.message(Registration.waiting_for_reader_number)
-async def reader_number_entered(message: types.Message, state: FSMContext):
+@router.message(UserRegistrationStates.waiting_for_reader_number)
+async def async_handle_reader_number_input(message: types.Message, state: FSMContext):
     await state.update_data(reader_number=message.text)
     data = await state.get_data()
     registration_result = register_user(data['name'], data['contact_data'], data['reader_number'])
@@ -71,20 +72,20 @@ async def reader_number_entered(message: types.Message, state: FSMContext):
         await state.set_state(None)
 
 @router.message(Command(commands=["login"]))
-async def cmd_login(message: types.Message, state: FSMContext):
+async def async_handle_login_command(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in") or user_data.get("staff_logged_in"):
         await message.answer(MESSAGES["already_logged_in"])
     else:
-        await ask_question(message, state, MESSAGES["enter_name"], Login.waiting_for_name)
+        await async_ask_question(message, state, MESSAGES["enter_name"], UserLoginStates.waiting_for_user_name)
 
-@router.message(Login.waiting_for_name)
-async def login_name_entered(message: types.Message, state: FSMContext):
+@router.message(UserLoginStates.waiting_for_user_name)
+async def async_handle_login_name_input(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await ask_question(message, state, MESSAGES["enter_reader_number"], Login.waiting_for_reader_number)
+    await async_ask_question(message, state, MESSAGES["enter_reader_number"], UserLoginStates.waiting_for_reader_number)
 
-@router.message(Login.waiting_for_reader_number)
-async def login_reader_number_entered(message: types.Message, state: FSMContext):
+@router.message(UserLoginStates.waiting_for_reader_number)
+async def async_handle_login_reader_number_input(message: types.Message, state: FSMContext):
     data = await state.get_data()
     name = data['name']
     reader_number = message.text
@@ -97,21 +98,21 @@ async def login_reader_number_entered(message: types.Message, state: FSMContext)
     reader_id = log_in_user(valid_data[0], valid_data[1])
     if reader_id:
         await state.update_data(logged_in=True, reader_id=reader_id)
-        await ask_question(message, state, MESSAGES["user_logged_in"].format(name=name), UserLoggedIn.active)
+        await async_ask_question(message, state, MESSAGES["user_logged_in"].format(name=name), UserSessionState.active_session)
     else:
         await message.answer(MESSAGES["login_failed"])
         await state.set_state(None)
 
 @router.message(Command(commands=["search"]))
-async def cmd_search(message: types.Message, state: FSMContext):
+async def async_handle_search_command(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in") or user_data.get("staff_logged_in"):
-        await ask_question(message, state, MESSAGES["enter_search_query"], BookSearch.waiting_for_query)
+        await async_ask_question(message, state, MESSAGES["enter_search_query"], BookSearchStates.waiting_for_search_query)
     else:
         await message.answer(MESSAGES["login_required"])
 
-@router.message(BookSearch.waiting_for_query)
-async def search_query_entered(message: types.Message, state: FSMContext):
+@router.message(BookSearchStates.waiting_for_search_query)
+async def async_handle_search_query_input(message: types.Message, state: FSMContext):
     query = message.text
     results = search_books(query)
     if results:
@@ -122,11 +123,11 @@ async def search_query_entered(message: types.Message, state: FSMContext):
     await state.set_state(None)
 
 @router.message(Command(commands=["bookdetails"]))
-async def cmd_book_details(message: types.Message, state: FSMContext):
-    await ask_question(message, state, MESSAGES["enter_book_id"], BookDetails.waiting_for_book_id)
+async def async_handle_book_details_command(message: types.Message, state: FSMContext):
+    await async_ask_question(message, state, MESSAGES["enter_book_id"], BookDetailsStates.waiting_for_book_id)
 
-@router.message(BookDetails.waiting_for_book_id)
-async def book_id_entered(message: types.Message, state: FSMContext):
+@router.message(BookDetailsStates.waiting_for_book_id)
+async def async_handle_book_id_input(message: types.Message, state: FSMContext):
     try:
         book_id = int(message.text)
     except ValueError:
@@ -141,12 +142,12 @@ async def book_id_entered(message: types.Message, state: FSMContext):
     await state.set_state(None)
 
 @router.message(Command(commands=["exit"]))
-async def cmd_exit(message: types.Message, state: FSMContext):
+async def async_handle_exit_command(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(MESSAGES["logged_out"])
 
 @router.message(Command(commands=["availablebooks"]))
-async def cmd_available_books(message: types.Message, state: FSMContext):
+async def async_handle_available_books_command(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in") or user_data.get("staff_logged_in"):
         books = get_available_books()
@@ -159,15 +160,15 @@ async def cmd_available_books(message: types.Message, state: FSMContext):
         await message.answer(MESSAGES["login_required"])
 
 @router.message(Command(commands=["reservebook"]))
-async def cmd_reserve_book(message: types.Message, state: FSMContext):
+async def async_handle_reserve_book_command(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in"):
-        await ask_question(message, state, MESSAGES["enter_book_id_for_reservation"], ReserveBook.waiting_for_book_id)
+        await async_ask_question(message, state, MESSAGES["enter_book_id_for_reservation"], BookReservationStates.waiting_for_book_id)
     else:
         await message.answer(MESSAGES["login_required"])
 
-@router.message(ReserveBook.waiting_for_book_id)
-async def book_id_to_reserve_entered(message: types.Message, state: FSMContext):
+@router.message(BookReservationStates.waiting_for_book_id)
+async def async_handle_book_id_for_reservation_input(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     reader_id = user_data.get("reader_id")
 
@@ -187,7 +188,7 @@ async def book_id_to_reserve_entered(message: types.Message, state: FSMContext):
     await state.set_state(None)
 
 @router.message(Command(commands=["myreservations"]))
-async def cmd_my_reservations(message: types.Message, state: FSMContext):
+async def async_handle_my_reservations_command(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     if user_data.get("logged_in"):
         reader_id = user_data.get("reader_id")
@@ -200,10 +201,10 @@ async def cmd_my_reservations(message: types.Message, state: FSMContext):
     else:
         await message.answer(MESSAGES["login_required"])
 
-async def ask_question(message: types.Message, state: FSMContext, question: str, state_name: State):
+async def async_ask_question(message: types.Message, state: FSMContext, question: str, next_state: State):
     await state.set_state(None)
     await message.answer(question)
-    await state.set_state(state_name)
+    await state.set_state(next_state)
 
 # Do not delete, here we connect methods to the rout.
 # We cannot do that earlier because smth was not completed yet
@@ -212,8 +213,8 @@ import Handlers.staff_handlers
 import Handlers.reservations_handlers
 
 # Функция для регистрации всех обработчиков
-def register_handlers(dp: Dispatcher):
-    dp.include_router(router)
+def register_handlers(dispatcher: Dispatcher):
+    dispatcher.include_router(router)
 
 def validate_book_id(book_id: str):
     try:
