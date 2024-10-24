@@ -1,15 +1,16 @@
 from Configuration.db_operations import *
 import psycopg2.extras
 
+from Configuration.localization import MESSAGES
+
+
 def register_user(name, contact_data, reader_number):
     """
     Регистрирует нового пользователя, если имя не существует в базе данных.
     """
-    # Проверка на существование пользователя с таким именем
     if check_if_exists("Readers", "name", name):
-        return "Такое имя пользователя уже зарегистрировано!"
+        return MESSAGES["user_already_registered"]
 
-    # Регистрация пользователя
     user_data = {
         'name': name,
         'contact_data': contact_data,

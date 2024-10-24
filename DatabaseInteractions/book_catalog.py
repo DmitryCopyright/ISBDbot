@@ -1,6 +1,9 @@
 from Configuration.db_operations import *
 import datetime
 
+from Configuration.localization import MESSAGES
+
+
 def delete_user_reservation(reservation_id):
     """
     Удаляет бронирование книги по идентификатору бронирования.
@@ -61,15 +64,13 @@ def reserve_book(book_id, reader_id):
     """
     Резервирует книгу для пользователя, создает бронь и запись о выдаче книги.
     """
-    # Проверяем, есть ли у пользователя уже активные бронирования
     query = """
         SELECT COUNT(*) FROM BookReservations
         WHERE reader_id = %s AND reservation_date IS NOT NULL
     """
     if execute_query(query, (reader_id,), fetchone=True)[0] >= 1:
-        return "Одновременно допускается не больше одного бронирования!"
+        return MESSAGES["max_reservations_reached"]
 
-    # Проверяем наличие книги и пользователя
     query = """
         SELECT b.name, COUNT(br.book_id)
         FROM Books b 
@@ -80,11 +81,10 @@ def reserve_book(book_id, reader_id):
     result = execute_query(query, (reader_id, book_id), fetchone=True)
 
     if not result or result[1] > 0:
-        return None  # Книга не найдена или уже забронирована пользователем
+        return None
 
     book_title = result[0]
 
-    # Создаем бронь в BookReservations
     query = """
         INSERT INTO BookReservations (name, book_id, reader_id, staff_id, reservation_date) 
         VALUES (%s, %s, %s, %s, CURRENT_DATE)
@@ -99,11 +99,10 @@ def reserve_book(book_id, reader_id):
     """
     execute_query(query, (book_id, reader_id, 1, return_date))
 
-    # Уменьшаем количество доступных копий
     query = "UPDATE Books SET copies = copies - 1 WHERE book_id = %s"
     execute_query(query, (book_id,))
 
-    return "Книга успешно забронирована", return_date
+    return MESSAGES["reservation_successful"], return_date  # Использование сообщения из локализации
 
 def get_user_reservations(reader_id):
     """
